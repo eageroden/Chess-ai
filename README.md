@@ -25,10 +25,10 @@ Zobrist hashing implmentation
 
 
 ## How to run 
-'''
+```
 pip install pygame
 python main.py
-'''
+```
 
 ## Controls 
 Drag and drop controls to move pieces
