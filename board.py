@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from zobrist import Zobrist
+from zobrist import Zobrist 
 
 EMPTY = 0
 PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING = 1, 2, 3, 4, 5, 6
@@ -22,7 +22,7 @@ def abs_piece(piece: int) -> int:
 class Move:
     from_sq: int
     to_sq: int
-    promo: int = 0 #0 is none , else piece type queen rook bishop knight
+    promo: int = 0 #0 is none, else piece type queen rook bishop knight
     is_ep: bool = False
     is_castle: bool = False
 
@@ -187,15 +187,15 @@ class Board:
 
     def _do_castle_rook(self, move: Move) -> None:
         #king moved to_sq identifies which castle it was 
-        #White: e1->g1 rook h1->f1, e1->c1 rook a1->d1
-        #Black: e8->g8 rook h8->f8, e8->c8 rook a8->d8
+        #White: e1->g1 king rook h1->f1, e1->c1 king rook a1->d1
+        #Black: e8->g8 king  rook h8->f8, e8->c8 king rook a8->d8
         if move.to_sq == 62: #white king side
             self._move_rook(63, 61)
         elif move.to_sq == 58: #white queen side
             self._move_rook(56, 59)
         elif move.to_sq == 6: #black king side
             self._move_rook(7, 5)
-        elif move.to_sq == 2:
+        elif move.to_sq == 2: #black queen side
             self._move_rook(0, 3)
     
     def _undo_castle_rook(self, move: Move) -> None:
@@ -218,12 +218,13 @@ class Board:
 
     def _get_captured_piece(self, move: Move) -> int:
         if move.is_ep:
-            cap_sq = move.to_sq + (8 if self.side_to_move == WHITE else -8)  # FIXED
+            cap_sq = move.to_sq + (8 if self.side_to_move == WHITE else -8)
             return self.squares[cap_sq]
         return self.squares[move.to_sq]
 
 
     def _update_castling_rights(self, move, moving_piece: int, captured: int) -> None:
+        #removes ability to castle on a given side if rook moves or is taken or a king moves
         #king moves
         if abs_piece(moving_piece) == KING:
             if self.side_to_move == WHITE:
@@ -251,4 +252,3 @@ class Board:
             return False
         #no legal moves mean checkmate or stalemate
         return True
-    
