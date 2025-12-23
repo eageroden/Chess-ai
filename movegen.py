@@ -7,31 +7,33 @@ from board import (
     WHITE, BLACK, WK, WQ, BK, BQ,
     piece_color, abs_piece
 )
+# squares are in a 0-63 array each row is 8 squares long so moving down one is 8 sqares
+N = -8 #north / up
+S = 8 #south / down
+E = 1 #east / right
+W = -1 #west / left
+NW = -9 #up left 
+SW = 7 #down left
+SE = 9 #down right
+NE = -7 #up right
 
-N = -8
-S = 8
-E = 1
-W = -1
-NW = -9
-SW = 7
-SE = 9
-NE = -7
-
-KNIGHT_OFFSETS = (-17, -15, -10, -6, 6, 10, 15, 17)
+KNIGHT_OFFSETS = (-17, -15, -10, -6, 6, 10, 15, 17) #offsets to move in a L shape 
 KING_OFFSETS = (N, S, E, W, NW, SW, SE, NE)
 
-BISHOP_DIRS = (NW, SW, SE, NE)
+BISHOP_DIRS = (NW, SW, SE, NE) #defines movement of sliding pieces 
 ROOK_DIRS = (N, S, E, W)
-QUEEN_DIRS = BISHOP_DIRS + ROOK_DIRS
+QUEEN_DIRS = BISHOP_DIRS + ROOK_DIRS #has access to move like bishop and rook
 
 #helpers
+#ensures valid indexs
 def on_board(sq: int) -> bool:
     return 0 <= sq < 64
-
+#0-7 columns
 def file_of(sq: int) -> int:
     return sq & 7
 
 def generate_legal_moves(board: Board) -> List[Move]:
+    #full list of leagle moves and check for king in check
     moves = generate_pseudo_legal_moves(board)
     legal :List[Move] = []
     stm = board.side_to_move
@@ -45,6 +47,7 @@ def generate_legal_moves(board: Board) -> List[Move]:
     return legal
 
 def is_in_check(board: Board, color: int) -> bool:
+    #checks if king is in check and must be moved or blocked
     king_sq = board.king_square(color)
     if king_sq is None:
         return False
@@ -52,6 +55,7 @@ def is_in_check(board: Board, color: int) -> bool:
 
 
 def square_attacked(board: Board, sq: int, by_color: int) -> bool:
+    #checks if square can be attacked by opponent
     f = file_of(sq)
     #Pawn
     if by_color == WHITE:
@@ -73,7 +77,7 @@ def square_attacked(board: Board, sq: int, by_color: int) -> bool:
         if on_board(to) and board.squares[to] == knight:
             if abs(file_of(to) - f) <= 2:
                 return True
-    #BISHOP / QUEEN
+    #bishop / queen
     for d in BISHOP_DIRS:
         to = sq + d
         while on_board(to) and abs(file_of(to) - file_of(to - d)) == 1:
@@ -84,7 +88,7 @@ def square_attacked(board: Board, sq: int, by_color: int) -> bool:
                 break
             to += d
 
-    #ROOK / QUEEN
+    #rook / queen
     for d in ROOK_DIRS:
         to = sq + d
         while on_board(to) and (d in (N, S) or abs(file_of(to) - file_of(to - d)) == 1):
@@ -95,7 +99,7 @@ def square_attacked(board: Board, sq: int, by_color: int) -> bool:
                 break
             to += d
 
-    #KING
+    #king
     king = KING if by_color == WHITE else -KING
     for d in KING_OFFSETS:
         to = sq + d
@@ -106,6 +110,7 @@ def square_attacked(board: Board, sq: int, by_color: int) -> bool:
     return False           
 
 def generate_pseudo_legal_moves(board: Board) -> List[Move]:
+    #generates all leagal moves with out checking for any checks
     moves: List[Move] = []
     stm = board.side_to_move
 
@@ -147,6 +152,7 @@ def generate_pseudo_legal_moves(board: Board) -> List[Move]:
     return moves
 
 def _pawn_moves(board: Board, sq: int, pawn: int) -> List[Move]:
+    #pawns are difrent becasue they can only move foward but attack sideways 
     moves: List[Move] = []
     stm = piece_color(pawn)
     f = file_of(sq)
@@ -167,7 +173,7 @@ def _pawn_moves(board: Board, sq: int, pawn: int) -> List[Move]:
             if board.squares[two] == EMPTY:
                 moves.append(Move(sq, two))
 
-    #Captures and EP
+    #Captures and En passant and promotion only to queen as the chance to promote to something else is extremly rare
     for d in (foward - 1, foward + 1):
         to = sq + d
         if not on_board(to):
@@ -186,6 +192,7 @@ def _pawn_moves(board: Board, sq: int, pawn: int) -> List[Move]:
     return moves
     
 def _slider(board: Board, sq: int, stm: int, dirs) -> List[Move]:
+    #used for bishop rook and queen where they can move in a line wether its diagonal or straight or both
     moves: List[Move] = []
     f = file_of(sq)
 
@@ -206,6 +213,7 @@ def _slider(board: Board, sq: int, stm: int, dirs) -> List[Move]:
     return moves
     
 def _castle_moves(board: Board, sq: int, stm: int) -> List[Move]:
+    #defines where pieces move when castling and checks to make sure they are not attacked squares
     moves: List[Move] = []
     
     if stm == WHITE and sq == 60:

@@ -1,6 +1,6 @@
 import pygame
 from typing import Optional, Tuple
-from movegen import generate_legal_moves
+from movegen import generate_legal_moves, is_in_check
 from board import Move, WHITE, BLACK, EMPTY
 
 TILE = 80
@@ -15,6 +15,7 @@ CAPTURE = (255, 120, 120)
 TEXT = (30, 30, 30)
 
 def load_piece_images(tile_size: int): 
+    #use images for pieces
     pieces = {
         1: "wp",  2: "wn",  3: "wb",  4: "wr",  5: "wq",  6: "wk",
        -1: "bp", -2: "bn", -3: "bb", -4: "br", -5: "bq", -6: "bk",
@@ -44,6 +45,54 @@ def mouse_to_sq(mx: int, my: int) -> Optional[int]:
     r = my // TILE
     return rc_to_sq(r, c)
 
+def get_game_result(board):
+    moves = generate_legal_moves(board)
+
+    if moves:
+        return None
+    
+    if is_in_check(board, board.side_to_move):
+        return "checkmate" 
+    else:
+        return "draw" #stalemate
+    
+def draw_popup(screen, text, width, height):
+    #checkmate and draw screen popup
+    overlay = pygame.Surface((width, height))
+    overlay.set_alpha(180)
+    overlay.fill((0, 0, 0))
+    screen.blit(overlay, (0, 0))
+
+    box_w, box_h = 420, 160
+    box_x = (width - box_w) // 2
+    box_y = (height - box_h) // 2
+
+    pygame.draw.rect(
+        screen,
+        (240, 240, 240),
+        (box_x, box_y, box_w, box_h),
+        border_radius=10
+    )
+
+    pygame.draw.rect(
+        screen,
+        (40, 40, 40),
+        (box_x, box_y, box_w, box_h),
+        3,
+        border_radius=10
+    )
+
+    font = pygame.font.SysFont(None, 36)
+    msg = font.render(text, True, (20, 20, 20))
+    screen.blit(
+        msg,
+        (
+            box_x + (box_w - msg.get_width()) // 2,
+            box_y + (box_h - msg.get_height()) // 2
+        )
+    )
+
+
 class ChessUI:
     def __init__(self, board, engine: Optional[object] = None):
         self.board = board
@@ -68,6 +117,9 @@ class ChessUI:
         self.ai_enabled = False
         self.ai_side = BLACK
 
+        self.game_over = False
+        self.game_result = None
+
     def run(self):
         running = True
         while running:
@@ -81,9 +133,9 @@ class ChessUI:
                         self.board.undo_move()
                     elif event.key == pygame.K_r: #reset
                         from board import Board
-                        self.board = Board.start_position()
-                    elif event.key == pygame.K_a: #toggle AI
-                        self.ai_enabled = not self.ai_enabled
+                        self.board = Board.start_position() 
+                        self.game_over = False #allows for a board reset when checkmate or draw screen showing
+                        self.game_result = None
                     elif event.key == pygame.K_SPACE: #Make AI move
                         self._ai_move_if_needed(force=True)
 
@@ -93,7 +145,6 @@ class ChessUI:
                 elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
                     self._on_mouse_up()
 
-            #ai contunous to play if it the AI's turn
             self._ai_move_if_needed(force=False)
 
             self.draw()
@@ -110,11 +161,17 @@ class ChessUI:
         if self.board.is_game_over():
             return
         
-        move = self.engine.chose_move(move)
+        move = self.engine.chose_move(self.board)
         if move is not None:
             self.board.make_move(move)
+            result = get_game_result(self.board)
+            if result:
+                self.game_over = True
+                self.game_result = result
 
     def _on_mouse_down(self):
+        if self.game_over:
+            return
         mx, my = pygame.mouse.get_pos()
         sq = mouse_to_sq(mx, my)
         if sq is None:
@@ -134,13 +191,6 @@ class ChessUI:
         self.legal_moves_cache = generate_legal_moves(self.board)
         self.highlight_moves = [m for m in self.legal_moves_cache if m.from_sq == sq]
         before = self.board.squares.copy()
-
-        """TEST IS HERE"""
-        generate_legal_moves(self.board)
-        after = self.board.squares
-
-        if before != after:
-            print("❌ BOARD CORRUPTION DETECTED")
 
 
     def _on_mouse_up(self):
@@ -163,6 +213,10 @@ class ChessUI:
         for m in self.highlight_moves:
             if m.to_sq == to_sq:
                 self.board.make_move(m)
+                result = get_game_result(self.board)
+                if result:
+                    self.game_over = True
+                    self.game_result = result
                 break
 
         self.highlight_moves = []
@@ -211,13 +265,13 @@ class ChessUI:
 
 
     def _draw_debug_panel(self):
+        #shows on bottom of page to show controls and transposition table size
         y0 = TILE * 8 + 8
         stm = "WHITE" if self.board.side_to_move == WHITE else "BLACK"
-        ai = f"AI: {'ON' if self.ai_enabled else 'OFF'} (plays {'WHITE' if self.ai_side==WHITE else 'BLACK'})"
         msg = [
-            f"Side to move {stm} | {ai}",
-            "Keys: [A] toggle AI [SPACE] AI move once [U] undo [R] reset",
-            f"Zobrist: {self.board.zobrist_hash:#016x} | TT size: {self.engine.tt.size()} | nodes last: {self.engine.last_nodes}",
+            f"Side to move {stm}",
+            "Keys: [SPACE] AI move once [U] undo [R] reset",
+            f"Zobrist hash: {self.board.zobrist_hash:#016x} | TT size: {self.engine.tt.size()}",
 
         ]
         for i, line in enumerate(msg):
@@ -230,4 +284,13 @@ class ChessUI:
         self._draw_pieces()
         self._draw_drag_piece()
         self._draw_debug_panel()
+
+        if self.game_over:
+            #popup for checkmake and draw screen
+            if self.game_result == "checkmate":
+                winner = "Black" if self.board.side_to_move == WHITE else "White"
+                draw_popup(self.screen, f"Checkmate! {winner} wins", WIDTH, HEIGHT)
+            else:
+                draw_popup(self.screen, f"Draw (stalemate)", WIDTH, HEIGHT)
+
         pygame.display.flip()
