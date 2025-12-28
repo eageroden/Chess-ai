@@ -1,5 +1,6 @@
 # Chess-ai
-This is a custom chess engine and graphical interface built from scratch with Python and Pygame. The project is designed with fast move generation with Zobrist hashing and Transposition tables with a simple UI to help with visualization and debugging. I have tested with a 1000 elo bot on chess.com and won in 24 move,s will test a bit more to get an idea of the elo of the engine
+This is a custom chess engine and graphical interface built from scratch with Python and Pygame. The project is designed with fast move generation with Zobrist hashing and Transposition tables with a simple UI to help with visualization and debugging. I have tested with a 1500 elo bot on chess.com and won in 40 moves, when playing vs a 1800 elo chess bot it got +8 advantage and drew by repetition due to not coding a draw by repetition check in the engine and the engine being deterministic, meaning that for every position only one outcome will ever be made and it will always be the same. my guess is that the chess bot is about 1500 - 1800+ elo on black and slightly worse on white due to the opening not being programed in leading the engine to make worse positions due to not being able to see the payoff of the moves due to the depth not being high enough. 
+
 
 ## Files 
 - board.py
