@@ -28,7 +28,7 @@ Zobrist hashing implementation to store game state in a 64-bit int
 ## How to run 
 ```
 pip install pygame
-python main.py
+python3 main.py
 ```
 
 ## Controls 
